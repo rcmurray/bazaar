@@ -31,10 +31,6 @@
  */
 package basilica2.agents.listeners;
 
-import basilica2.agents.components.InputCoordinator;
-import basilica2.agents.events.MessageEvent;
-import edu.cmu.cs.lti.basilica2.core.Event;
-import edu.cmu.cs.lti.project911.utils.log.Logger;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -43,6 +39,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import basilica2.agents.components.InputCoordinator;
+import basilica2.agents.events.MessageEvent;
+import edu.cmu.cs.lti.basilica2.core.Event;
+import edu.cmu.cs.lti.project911.utils.log.Logger;
 
 /**
  * 
@@ -132,20 +133,17 @@ public class MessageAnnotator implements BasilicaPreProcessor
 			String entry = dictionary.get(j);
 			try
 			{
-				if (entry.startsWith("/") && entry.endsWith("/"))
-				{
-					String regex = ".*" + entry.substring(1, entry.length() - 1) + ".*";
-					if (text.matches(regex))// text.contains(" "
-																							// +
-																							// dictionary.get(j)))
-					{
-						matchedTerms.add(entry);
-					}
-				}
-				else if (text2.contains(" " + entry))
-				{
-					matchedTerms.add(entry);
-				}
+				// \\b indicates a word boundary, so only whole word search is used.
+				// Gets rid of the Problem matching substrings in words.
+				
+				String regex = "\\b" + entry + "\\b";
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(regex);
+                java.util.regex.Matcher matcher = pattern.matcher(text);
+                if (matcher.find())
+                {
+                    matchedTerms.add(entry);
+                }
+				
 			}
 			catch (Exception e)
 			{
