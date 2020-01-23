@@ -1,16 +1,5 @@
 package basilica2.agents.components;
 
-import basilica2.agents.listeners.BasilicaListener;
-import basilica2.agents.listeners.BasilicaPreProcessor;
-import basilica2.agents.data.RollingWindow;
-import basilica2.agents.events.EchoEvent;
-import basilica2.agents.events.MessageEvent;
-import basilica2.agents.events.PresenceEvent;
-import basilica2.agents.events.priority.PriorityEvent;
-import basilica2.agents.events.priority.PrioritySource;
-import basilica2.util.MessageEventLogger;
-import edu.cmu.cs.lti.basilica2.core.*;
-import edu.cmu.cs.lti.project911.utils.log.Logger;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.GridLayout;
@@ -20,24 +9,32 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimerTask;
-import java.util.logging.Level;
+
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
-import javax.swing.table.TableColumnModel;
+
+import basilica2.agents.data.RollingWindow;
+import basilica2.agents.events.EchoEvent;
+import basilica2.agents.events.MessageEvent;
+import basilica2.agents.events.priority.PriorityEvent;
+import basilica2.agents.events.priority.PrioritySource;
+import basilica2.agents.listeners.BasilicaListener;
+import basilica2.agents.listeners.BasilicaPreProcessor;
+import basilica2.util.MessageEventLogger;
+import basilica2.util.UserMessageHistory;
+import edu.cmu.cs.lti.basilica2.core.Agent;
+import edu.cmu.cs.lti.basilica2.core.Component;
+import edu.cmu.cs.lti.basilica2.core.Event;
+import edu.cmu.cs.lti.project911.utils.log.Logger;
 
 /**
  *
@@ -51,8 +48,7 @@ public class InputCoordinator extends Component
     Set<Event> preprocessedEvents = new HashSet<Event>();
     Set<PriorityEvent> proposals = new HashSet<PriorityEvent>();
     private OutputCoordinator outputCoordinator;
-    
-    
+    public UserMessageHistory userMessages = new UserMessageHistory();
     
     
     public InputCoordinator(Agent a, String n, String pf) 
@@ -156,8 +152,13 @@ public class InputCoordinator extends Component
         {
             event = new EchoEvent(this, (MessageEvent)event);
         }
-        //System.err.println(event.getName()+": "+event.toString());
-            
+        
+        userMessages.handleUserMessage(event);
+        
+        if(userMessages.multiMessageActive()) {
+        	return;
+        }
+        
         synchronized(this)
         {
 //            Class<? extends Event> eventClass = event.getClass();
@@ -183,10 +184,9 @@ public class InputCoordinator extends Component
             
             processAllEvents();
         }
-        
-        
     }
-
+    
+    
 	public boolean isAgentName(String from)
 	{
 		return from.trim().contains(getAgent().getUsername().trim()) || from.contains("Tutor") || from.trim().contains(System.getProperty("loginHandle", "Tutor"));
@@ -209,10 +209,6 @@ public class InputCoordinator extends Component
 	        		window.addEvent(me, me.getAllAnnotations());
 	        		window.addEvent(me, "incoming", me.getFrom()+"_turn", "student_turn");
                 }
-//                else if(eve instanceof EchoEvent)
-//                {
-//                	window.addEvent(eve, "tutor_turn");
-//                }
             }
 
             pushEventsToOutputCoordinator();
@@ -233,9 +229,6 @@ public class InputCoordinator extends Component
 
 	private void processOneEvent(Event eve)
 	{
-//		Class<? extends Event> eventClass = eve.getClass();
-//		if(listeners.containsKey(eventClass))
-		
 		super.notifyEventObservers(eve);
 		
         for(Class<? extends Event> keyClass : listeners.keySet())
