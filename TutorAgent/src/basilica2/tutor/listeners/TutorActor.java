@@ -108,6 +108,7 @@ public class TutorActor extends BasilicaAdapter implements TimeoutReceiver
 	private String moving_on_text = "Okay, let's move on.";
 	private String tutorialCondition = "tutorial";
 	private int numUser = 1;
+	private int unanticipated_response_number_messages_until_moveon = 0;
 	
 	private boolean block = false;
 
@@ -150,6 +151,7 @@ public class TutorActor extends BasilicaAdapter implements TimeoutReceiver
 		dialogueFolder = properties.getProperty("dialogue_folder",dialogueFolder);
 		startAnyways = properties.getProperty("start_anyways","false").equals("true");
 		tutorialCondition = properties.getProperty("tutorial_condition",tutorialCondition);
+		unanticipated_response_number_messages_until_moveon = Integer.parseInt(properties.getProperty("unanticipated_response_number_messages"));
 		
 		loadDialogConfiguration(dialogueConfigFile);
 		
@@ -433,63 +435,34 @@ public class TutorActor extends BasilicaAdapter implements TimeoutReceiver
 						{
 							if (!nullExpected)
 							{
+								if(unanticipated_response_number_messages_until_moveon == 0) {
+									unanticipated_response_number_messages_until_moveon = numUser + 2;
+								}
+								
 								// If expecting non-null response and didnt get
 								// it, poke for response
 								noMatchingResponseCount++;
-								if (noMatchingResponseCount <= numUser + 2)
-								{
-									//TODONE: fire poke event in repsonse to student message
-//									TutorTurnsEvent tte = new TutorTurnsEvent(this, new String[] { response_poke_prompt_text,
-//											lastTutorTurns.get(lastTutorTurns.size() - 1) });
-//									this.dispatchEvent(myAgent.getComponent(tutoring_actor_name), tte);
-									//sendTutorMessage(response_poke_prompt_text, lastTutorTurns.get(lastTutorTurns.size() - 1));
+								
+								if (noMatchingResponseCount >= unanticipated_response_number_messages_until_moveon) {
+									moveOn(concept);
+								} else if (noMatchingResponseCount <= unanticipated_response_number_messages_until_moveon) {
 									System.out.println("unanticipated");
-								}
-								else if (noMatchingResponseCount >= numUser + 2)
-								{
-									// Give up and just go with Unanticipated
-									// Response match
-									expectingResponse = false;
-									noMatchingResponseCount = 0;
-									List<String> tutorTurns = currentAutomata.progress(concept);
-									processTutorTurns(tutorTurns);
 								}
 							}
 							else
 							{
 								// If expecting only null response and got it,
 								// process it and move on
-								expectingResponse = false;
-								noMatchingResponseCount = 0;
-								List<String> tutorTurns = currentAutomata.progress(concept);
-								processTutorTurns(tutorTurns);
+								moveOn(concept);
 							}
 						}
-						/*else if (concept.getLabel().equalsIgnoreCase("_dont_know_"))
-						{
-
-							noMatchingResponseCount++;
-//							for (int i = 0; i < ste.getContributors().length; i++)
-//							{
-//								answerers.add(ste.getContributors()[i]);
-//							}
-							// Prompt if anyone else wants to try
-							//TODONE: respond to "don't know"
-//							TutorTurnsEvent tte = new TutorTurnsEvent(this, new String[] { dont_know_prompt_text });
-//							this.dispatchEvent(myAgent.getComponent(tutoring_actor_name), tte);
-							sendTutorMessage(dont_know_prompt_text);
-						}*/
 						else
 						{
 							for (String contributor : ste.getContributors())
 							{
 								answerers.add(contributor);
 							}
-							// If Response is non-null, process it
-							expectingResponse = false;
-							noMatchingResponseCount = 0;
-							List<String> tutorTurns = currentAutomata.progress(concept);
-							processTutorTurns(tutorTurns);
+							moveOn(concept);
 						}
 					}
 				}
@@ -497,6 +470,13 @@ public class TutorActor extends BasilicaAdapter implements TimeoutReceiver
 		}
 	}
 
+	private void moveOn(Concept concept) {
+		expectingResponse = false;
+		noMatchingResponseCount = 0;
+		List<String> tutorTurns = currentAutomata.progress(concept);
+		processTutorTurns(tutorTurns);
+	}
+	
 	private void messageAccepted()
 	{
 		if (currentAutomata != null)
